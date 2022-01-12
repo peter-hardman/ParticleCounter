@@ -7,4 +7,6 @@ Every second it emits a 32 Byte block of data starting with a header byte of 0x0
 
 By syncing up with the 0x03, 0x02 sequence it is possible to collect the other data and then use it to reconstruct the data.
 
-This project uses PyQT5 and pyqtgraph to create a UI that can display the particle count for the last hour
+This project uses PyQT5 and pyqtgraph to create a UI that can display the particle count for the last hour.
+You will need to make modifications to figure out which serial port you are listening to the device on and adapt the code accordingly.
+
