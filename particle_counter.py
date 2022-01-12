@@ -1,15 +1,15 @@
-import serial   #pip install pySerial
+import serial   # pip install pySerial
 import sys
-import os
 import json
 import time
 from datetime import datetime
 
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon       # pip install PyQT5
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-import pyqtgraph as pg  # pyqtgraph is used to display the spectrum data pip install pyqtgraph
+import pyqtgraph as pg  # pyqtgraph is used to display the data pip install pyqtgraph
+
 
 class TimeAxisItem(pg.AxisItem):
     def __init__(self, *args, **kwargs):
@@ -18,12 +18,13 @@ class TimeAxisItem(pg.AxisItem):
         self.enableAutoSIPrefix(False)
 
     def tickStrings(self, values, scale, spacing):
-        if spacing <1:
+        if spacing < 1:
             return [datetime.fromtimestamp(value).strftime("%H:%M:%S.%f") for value in values]
-        if spacing <30:
+        if spacing < 30:
             return [datetime.fromtimestamp(value).strftime("%H:%M:%S") for value in values]
         else:
             return [datetime.fromtimestamp(value).strftime("%H:%M") for value in values]
+
 
 def timestamp():
     return int(time.mktime(datetime.now().timetuple()))
@@ -40,7 +41,7 @@ class SixGraphWidget(QWidget):
         self.graph.setXRange(timestamp(), timestamp() + 30)
         self.graph.autoRange()
         self.graph.showGrid(x=True, y=True)
-        self.legend= self.graph.addLegend(offset = (1,1),verSpacing = -6, brush='#777777AA',labelTextSize = '7pt')
+        self.legend = self.graph.addLegend(offset=(1, 1), verSpacing=-6, brush='#777777AA', labelTextSize='7pt')
 
         self.layout = QGridLayout(self)
         self.layout.addWidget(self.graph, 0, 0)
@@ -66,7 +67,7 @@ class SixGraphWidget(QWidget):
         self.plotData5 = {'x': [], 'y': []}
         self.plotData6 = {'x': [], 'y': []}
 
-    def update_pens(self, p1,p2,p3,p4,p5,p6):
+    def update_pens(self, p1, p2, p3, p4, p5, p6):
         self.pen1 = p1
         self.pen2 = p2
         self.pen3 = p3
@@ -81,12 +82,12 @@ class SixGraphWidget(QWidget):
         self.plotCurve6 = self.graph.plot(pen=self.pen6)
 
     def update_names(self, n1, n2, n3, n4, n5, n6):
-        self.plotCurve1 = self.graph.plot(name = n1,pen=self.pen1)
-        self.plotCurve2 = self.graph.plot(name = n2 ,pen=self.pen2)
-        self.plotCurve3 = self.graph.plot(name = n3,pen=self.pen3)
-        self.plotCurve4 = self.graph.plot(name = n4,pen=self.pen4)
-        self.plotCurve5 = self.graph.plot(name = n5,pen=self.pen5)
-        self.plotCurve6 = self.graph.plot(name = n6,pen=self.pen6)
+        self.plotCurve1 = self.graph.plot(name=n1, pen=self.pen1)
+        self.plotCurve2 = self.graph.plot(name=n2, pen=self.pen2)
+        self.plotCurve3 = self.graph.plot(name=n3, pen=self.pen3)
+        self.plotCurve4 = self.graph.plot(name=n4, pen=self.pen4)
+        self.plotCurve5 = self.graph.plot(name=n5, pen=self.pen5)
+        self.plotCurve6 = self.graph.plot(name=n6, pen=self.pen6)
 
     def update_title(self, title):
         self.graph.setTitle(title)
@@ -94,7 +95,7 @@ class SixGraphWidget(QWidget):
     def update_labels(self, labelleft):
         self.graph.setLabels(left=labelleft)
 
-    def update_plots(self, v1,v2,v3,v4,v5,v6):
+    def update_plots(self, v1, v2, v3, v4, v5, v6):
         self.plotData1['y'].append(v1)
         self.plotData2['y'].append(v2)
         self.plotData3['y'].append(v3)
@@ -123,8 +124,6 @@ class SixGraphWidget(QWidget):
             self.plotData5['x'].pop(0)
             self.plotData6['x'].pop(0)
 
-
-
         self.plotCurve1.setData(self.plotData1['x'], self.plotData1['y'])
         self.plotCurve2.setData(self.plotData2['x'], self.plotData2['y'])
         self.plotCurve3.setData(self.plotData3['x'], self.plotData3['y'])
@@ -133,68 +132,64 @@ class SixGraphWidget(QWidget):
         self.plotCurve6.setData(self.plotData6['x'], self.plotData6['y'])
 
 
-
 class StatusSignals(QObject):
     status_notification = pyqtSignal(dict)
 
 
 class SerialDataThread(QRunnable):
-
-    def __init__(self,port_name):
+    def __init__(self, port_name):
         super().__init__()
         self.port_name = port_name
-        self.serialPort = serial.Serial(self.port_name, 9600, timeout=0, parity=serial.PARITY_EVEN, rtscts=0, stopbits=1)
+        self.serialPort = serial.Serial(self.port_name, 9600, timeout=0,
+                                        parity=serial.PARITY_EVEN, rtscts=0, stopbits=1)
         self.signals = StatusSignals()
 
     def run(self):
         header = False
-        count = 0
         max_size = 30
         payload = []
         self.serialPort.flushInput()
-        while (1):
-            if (self.serialPort.in_waiting > 0):
-                dataByte = self.serialPort.read()
+        while 1:
+            if self.serialPort.in_waiting > 0:
+                data_byte = self.serialPort.read()
                 #        print(ord(dataByte),end=',')
                 if header:
                     if len(payload) < max_size:
-                        payload.append(ord(dataByte))
+                        payload.append(ord(data_byte))
                     else:  # watch out for the end of data character '0x03'
-                        if ord(dataByte) == 0x03:
+                        if ord(data_byte) == 0x03:
                             # print(payload)
                             header = False
-                            PM1_Reg = int(payload[0]) | int(payload[1]) << 8 | int(payload[2]) << 16 | int(
+                            pm1_reg = int(payload[0]) | int(payload[1]) << 8 | int(payload[2]) << 16 | int(
                                 payload[3]) << 24
-                            PM25_Reg = int(payload[4]) | int(payload[5]) << 8 | int(payload[6]) << 16 | int(
+                            pm25_reg = int(payload[4]) | int(payload[5]) << 8 | int(payload[6]) << 16 | int(
                                 payload[7]) << 24
-                            PM10_Reg = int(payload[8]) | int(payload[9]) << 8 | int(payload[10]) << 16 | int(
+                            pm10_reg = int(payload[8]) | int(payload[9]) << 8 | int(payload[10]) << 16 | int(
                                 payload[11]) << 24
                             #                    print()
                             #                    print(PM1_Reg,PM25_Reg,PM10_Reg )
 
-                            Reg1 = int(payload[12]) | int(payload[13]) << 8
-                            Reg2 = int(payload[14]) | int(payload[15]) << 8
-                            Reg3 = int(payload[15]) | int(payload[17]) << 8
+                            reg1 = int(payload[12]) | int(payload[13]) << 8
+                            reg2 = int(payload[14]) | int(payload[15]) << 8
+                            reg3 = int(payload[15]) | int(payload[17]) << 8
 
-                            Reg4 = payload[20] | payload[21] << 8
-                            Reg5 = payload[22] | payload[23] << 8
-                            Reg6 = payload[24] | payload[25] << 8
+                            reg4 = payload[20] | payload[21] << 8
+                            reg5 = payload[22] | payload[23] << 8
+                            reg6 = payload[24] | payload[25] << 8
 
-                            #                   print("Particle Count:");
-                            #                   print("0.3-0.5μm:| 0.5-1.0μm:| 1.0-2.5μm:| 2.5-5.0μm: | 5.0-7.5μm: | 7.5-10.0μm:   ");
-                            print(Reg1, Reg2, Reg3, Reg4, Reg5, Reg6);
+                            print(reg1, reg2, reg3, reg4, reg5, reg6)
                             status = str("{}")
                             j_status = json.loads(status)
-                            j_status['Reg1'] = str(Reg1)
-                            j_status['Reg2'] = str(Reg2)
-                            j_status['Reg3'] = str(Reg3)
-                            j_status['Reg4'] = str(Reg4)
-                            j_status['Reg5'] = str(Reg5)
-                            j_status['Reg6'] = str(Reg6)
+                            j_status['Reg1'] = str(reg1)
+                            j_status['Reg2'] = str(reg2)
+                            j_status['Reg3'] = str(reg3)
+                            j_status['Reg4'] = str(reg4)
+                            j_status['Reg5'] = str(reg5)
+                            j_status['Reg6'] = str(reg6)
                             self.signals.status_notification.emit(j_status)
 
                 else:
-                    if ord(dataByte) == 0x02:
+                    if ord(data_byte) == 0x02:
                         header = True
                         payload.clear()
         #               print("Payload length is "+str(len(payload)))
@@ -234,42 +229,41 @@ class AppForm(QMainWindow):
         self.timer_interval = 1000                  # This is very aggressive checking.  Should be 10000 (10s)
         self.timer.start(self.timer_interval)
 
-
     def data_handler(self, status):
         # print("status_handler- " + str(status))
         try:
             if len(status) > 0:
-                regValue1 = QTableWidgetItem(str(status['Reg1']))
-                regValue1.setTextAlignment(Qt.AlignCenter+Qt.AlignVCenter)
-                self.device_table.setItem(0, 0, regValue1)
+                reg_value1 = QTableWidgetItem(str(status['Reg1']))
+                reg_value1.setTextAlignment(Qt.AlignCenter+Qt.AlignVCenter)
+                self.device_table.setItem(0, 0, reg_value1)
 
-                regValue2 = QTableWidgetItem(str(status['Reg2']))
-                regValue2.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
-                self.device_table.setItem(0,1, regValue2)
+                reg_value2 = QTableWidgetItem(str(status['Reg2']))
+                reg_value2.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
+                self.device_table.setItem(0, 1, reg_value2)
 
-                regValue3 = QTableWidgetItem(str(status['Reg3']))
-                regValue3.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
-                self.device_table.setItem(0,2, regValue3)
+                reg_value3 = QTableWidgetItem(str(status['Reg3']))
+                reg_value3.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
+                self.device_table.setItem(0, 2, reg_value3)
 
-                regValue4 = QTableWidgetItem(str(status['Reg4']))
-                regValue4.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
-                self.device_table.setItem(0,3, regValue4)
+                reg_value4 = QTableWidgetItem(str(status['Reg4']))
+                reg_value4.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
+                self.device_table.setItem(0, 3, reg_value4)
 
-                regValue5 = QTableWidgetItem(str(status['Reg5']))
-                regValue5.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
-                self.device_table.setItem(0,4, regValue5)
+                reg_value5 = QTableWidgetItem(str(status['Reg5']))
+                reg_value5.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
+                self.device_table.setItem(0, 4, reg_value5)
 
-                regValue6 = QTableWidgetItem(str(status['Reg6']))
-                regValue6.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
-                self.device_table.setItem(0,5, regValue6)
+                reg_value6 = QTableWidgetItem(str(status['Reg6']))
+                reg_value6.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
+                self.device_table.setItem(0, 5, reg_value6)
 
-                newValue1 = int(status['Reg1'])
-                newValue2 = int(status['Reg2'])
-                newValue3 = int(status['Reg3'])
-                newValue4 = int(status['Reg4'])
-                newValue5 = int(status['Reg5'])
-                newValue6 = int(status['Reg6'])
-                self.particle_graph.update_plots(newValue1,newValue2,newValue3,newValue4,newValue5,newValue6)
+                new_value1 = int(status['Reg1'])
+                new_value2 = int(status['Reg2'])
+                new_value3 = int(status['Reg3'])
+                new_value4 = int(status['Reg4'])
+                new_value5 = int(status['Reg5'])
+                new_value6 = int(status['Reg6'])
+                self.particle_graph.update_plots(new_value1, new_value2, new_value3, new_value4, new_value5, new_value6)
 
         except Exception as e:
             print(repr(e))
@@ -278,19 +272,18 @@ class AppForm(QMainWindow):
     def on_timer(self):
         pass
 
-
     def create_main_frame(self):
-
         # ---------------------------------------------------------------
         # Control Layout
         # ---------------------------------------------------------------
         self.device_table = QTableWidget(0, 6)
-        self.device_table.verticalHeader().setVisible(False)     #hides row numbers
+        self.device_table.verticalHeader().setVisible(False)     # hides row numbers
         self.device_table.setMinimumWidth(602)
         self.device_table.setMaximumWidth(602)
         self.device_table.setMinimumHeight(45)
         self.device_table.setMaximumHeight(45)
-        self.device_table.setHorizontalHeaderLabels(['0.3-0.5μm', '0.5-1.0μm', '1.0-2.5μm', '2.5-5.0μm', '5.0-7.5μm', '7.5-10.0μm'])
+        self.device_table.setHorizontalHeaderLabels(
+            ['0.3-0.5μm', '0.5-1.0μm', '1.0-2.5μm', '2.5-5.0μm', '5.0-7.5μm', '7.5-10.0μm'])
         self.device_table.setColumnWidth(0, 100)    # 0.3-0.5μm
         self.device_table.setColumnWidth(1, 100)    # 0.5-1.0μm
         self.device_table.setColumnWidth(2, 100)    # 1.0-2.5μm
@@ -312,7 +305,7 @@ class AppForm(QMainWindow):
         self.particle_graph = SixGraphWidget()
         self.particle_graph.update_title("Particles")
         self.particle_graph.update_labels("Particles / s")
-        self.particle_graph.update_pens('r','g','y','b','cyan','w')
+        self.particle_graph.update_pens('r', 'g', 'y', 'b', 'cyan', 'w')
         self.particle_graph.update_names('0.3-0.5μm', '0.5-1.0μm', '1.0-2.5μm', '2.5-5.0μm', '5.0-7.5μm', '7.5-10.0μm')
         self.data_plot_layout.addWidget(self.particle_graph)
 
@@ -325,11 +318,8 @@ class AppForm(QMainWindow):
         self.status_text = QLabel("")
         self.statusBar().addWidget(self.status_text, 1)
 
-
     def create_menu(self):
-
         quit_action = self.create_action("&Quit", slot=self.close, shortcut="Ctrl+Q", tip="Close the application")
-
         self.add_actions(self.file_menu, (None, quit_action))
 
     def add_actions(self, target, actions):
@@ -364,3 +354,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
