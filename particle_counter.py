@@ -1,8 +1,10 @@
+import pyqtgraph
 import serial   # pip install pySerial
 import sys
 import json
 import time
 from datetime import datetime
+import requests
 
 from PyQt5.QtGui import QIcon       # pip install PyQT5
 from PyQt5.QtCore import *
@@ -30,64 +32,91 @@ def timestamp():
     return int(time.mktime(datetime.now().timetuple()))
 
 
-class SixGraphWidget(QWidget):
-    def __init__(self, parent=None):
+class MultiGraphWidget(QWidget):
+    def __init__(self,plot_count, parent=None,):
         QWidget.__init__(self, parent)
         self.graph = pg.PlotWidget(
             title="Example plot",
             labels={'left': 'Reading / mV'},
             axisItems={'bottom': TimeAxisItem(orientation='bottom')}
         )
+        self.plot_count = plot_count
         self.graph.setXRange(timestamp(), timestamp() + 30)
         self.graph.autoRange()
         self.graph.showGrid(x=True, y=True)
-        self.legend = self.graph.addLegend(offset=(1, 1), verSpacing=-6, brush='#777777AA', labelTextSize='7pt')
+        self.legend = self.graph.addLegend(offset=(1, 1), verSpacing=0, brush='#777777AA', labelTextSize='7pt')
+ #       self.legend = self.graph.addLegend(offset=(1, 1), verSpacing=0, brush='#777777AA', labelTextSize='7pt')
 
         self.layout = QGridLayout(self)
         self.layout.addWidget(self.graph, 0, 0)
 
-        self.pen1 = 'w'
-        self.pen2 = 'w'
-        self.pen3 = 'w'
-        self.pen4 = 'w'
-        self.pen5 = 'w'
-        self.pen6 = 'w'
+        self.pens = []
+        for p in range(plot_count):
+            self.pens.append(pyqtgraph.mkPen('k'))
 
-        self.plotCurve1 = self.graph.plot(pen=self.pen1)
-        self.plotCurve2 = self.graph.plot(pen=self.pen2)
-        self.plotCurve3 = self.graph.plot(pen=self.pen3)
-        self.plotCurve4 = self.graph.plot(pen=self.pen4)
-        self.plotCurve5 = self.graph.plot(pen=self.pen5)
-        self.plotCurve6 = self.graph.plot(pen=self.pen6)
+        self.symbol_pens = []
+        for p in range(plot_count):
+            self.symbol_pens.append(pyqtgraph.mkPen('k'))
 
-        self.plotData1 = {'x': [], 'y': []}
-        self.plotData2 = {'x': [], 'y': []}
-        self.plotData3 = {'x': [], 'y': []}
-        self.plotData4 = {'x': [], 'y': []}
-        self.plotData5 = {'x': [], 'y': []}
-        self.plotData6 = {'x': [], 'y': []}
+        self.plot_names = []
+        for p in range(plot_count):
+            self.plot_names.append('')
 
-    def update_pens(self, p1, p2, p3, p4, p5, p6):
-        self.pen1 = p1
-        self.pen2 = p2
-        self.pen3 = p3
-        self.pen4 = p4
-        self.pen5 = p5
-        self.pen6 = p6
-        self.plotCurve1 = self.graph.plot(pen=self.pen1)
-        self.plotCurve2 = self.graph.plot(pen=self.pen2)
-        self.plotCurve3 = self.graph.plot(pen=self.pen3)
-        self.plotCurve4 = self.graph.plot(pen=self.pen4)
-        self.plotCurve5 = self.graph.plot(pen=self.pen5)
-        self.plotCurve6 = self.graph.plot(pen=self.pen6)
+        self.symbols = []
+        for p in range(plot_count):
+            self.symbols.append(None)
 
-    def update_names(self, n1, n2, n3, n4, n5, n6):
-        self.plotCurve1 = self.graph.plot(name=n1, pen=self.pen1)
-        self.plotCurve2 = self.graph.plot(name=n2, pen=self.pen2)
-        self.plotCurve3 = self.graph.plot(name=n3, pen=self.pen3)
-        self.plotCurve4 = self.graph.plot(name=n4, pen=self.pen4)
-        self.plotCurve5 = self.graph.plot(name=n5, pen=self.pen5)
-        self.plotCurve6 = self.graph.plot(name=n6, pen=self.pen6)
+        self.line_widths = []
+        for p in range(plot_count):
+            self.line_widths.append(1)
+
+        self.plot_curves = []
+        for c in range(plot_count):
+           self.plot_curves.append(self.graph.plot(pen=self.pens[c]))
+
+        self.plot_datas = []
+        for d in range(plot_count):
+            self.plot_datas.append({'x': [], 'y': []})
+
+    def update_plot_styles(self):
+        self.plot_curves.clear()
+        for p in range(self.plot_count):
+            self.plot_curves.append ( self.graph.plot(pen=self.pens[p],
+                                                      width= self.line_widths[p],
+                                                      name=self.plot_names[p],
+                                                      symbol=self.symbols[p],
+                                                      symbolSize=4,
+                                                      symbolBrush= self.pens[p],
+                                                      symbolPen=self.symbol_pens[p]
+                                                      )
+                                      )
+
+
+
+    def update_widths(self, new_widths):
+        for w in range(len(new_widths)):
+            self.line_widths[w] = new_widths[w]
+        #self.update_plot_styles()
+
+    def update_symbols(self, new_symbols):
+        for s in range(len(new_symbols)):
+            self.symbols[s] = new_symbols[s]
+        #self.update_plot_styles()
+
+    def update_pens(self, new_pens):
+        for p in range(len(new_pens)):
+            self.pens[p]=new_pens[p]
+        #self.update_plot_styles()
+
+    def update_symbol_pens(self, new_pens):
+        for p in range(len(new_pens)):
+            self.symbol_pens[p]= new_pens[p]
+        #self.update_plot_styles()
+
+    def update_names(self, new_names):
+        for n in range(len(new_names)):
+            self.plot_names[n]=new_names[n]
+        #self.update_plot_styles()
 
     def update_title(self, title):
         self.graph.setTitle(title)
@@ -95,41 +124,18 @@ class SixGraphWidget(QWidget):
     def update_labels(self, labelleft):
         self.graph.setLabels(left=labelleft)
 
-    def update_plots(self, v1, v2, v3, v4, v5, v6):
-        self.plotData1['y'].append(v1)
-        self.plotData2['y'].append(v2)
-        self.plotData3['y'].append(v3)
-        self.plotData4['y'].append(v4)
-        self.plotData5['y'].append(v5)
-        self.plotData6['y'].append(v6)
+    def update_plots(self, new_values):
+        new_time = timestamp()
+        for v in range(len(new_values)):
+            self.plot_datas[v]['y'].append(new_values[v])
+            self.plot_datas[v]['x'].append(new_time)
 
-        self.plotData1['x'].append(timestamp())
-        self.plotData2['x'].append(timestamp())
-        self.plotData3['x'].append(timestamp())
-        self.plotData4['x'].append(timestamp())
-        self.plotData5['x'].append(timestamp())
-        self.plotData6['x'].append(timestamp())
+        for v in range(len(new_values)):
+            if len(self.plot_datas[v]['y']) > 3600:
+                self.plot_datas[v]['y'].pop(0)
+                self.plot_datas[v]['x'].pop(0)
 
-        if len(self.plotData1['y']) > 3600:
-            self.plotData1['y'].pop(0)
-            self.plotData2['y'].pop(0)
-            self.plotData3['y'].pop(0)
-            self.plotData4['y'].pop(0)
-            self.plotData5['y'].pop(0)
-            self.plotData6['y'].pop(0)
-            self.plotData1['x'].pop(0)
-            self.plotData2['x'].pop(0)
-            self.plotData3['x'].pop(0)
-            self.plotData4['x'].pop(0)
-            self.plotData5['x'].pop(0)
-            self.plotData6['x'].pop(0)
-
-        self.plotCurve1.setData(self.plotData1['x'], self.plotData1['y'])
-        self.plotCurve2.setData(self.plotData2['x'], self.plotData2['y'])
-        self.plotCurve3.setData(self.plotData3['x'], self.plotData3['y'])
-        self.plotCurve4.setData(self.plotData4['x'], self.plotData4['y'])
-        self.plotCurve5.setData(self.plotData5['x'], self.plotData5['y'])
-        self.plotCurve6.setData(self.plotData6['x'], self.plotData6['y'])
+            self.plot_curves[v].setData(self.plot_datas[v]['x'], self.plot_datas[v]['y'])
 
 
 class StatusSignals(QObject):
@@ -200,10 +206,13 @@ class AppForm(QMainWindow):
         QMainWindow.__init__(self, parent)
         self.setWindowTitle('Particle Counts')
 
+        self.data_count = 0
         self.particle_history = []
 
-# Create the GUI elements.
+        self.averages = [0.0,0.0,0.0,0.0,0.0,0.0]
+        self.new_values = [0.0,0.0,0.0,0.0,0.0,0.0]
 
+# Create the GUI elements.
         self.file_menu = self.menuBar().addMenu("&File")
         self.create_menu()
 
@@ -229,41 +238,46 @@ class AppForm(QMainWindow):
         self.timer_interval = 1000                  # This is very aggressive checking.  Should be 10000 (10s)
         self.timer.start(self.timer_interval)
 
-    def data_handler(self, status):
-        # print("status_handler- " + str(status))
+
+    def data_handler(self, status):     #we have new data
+        self.data_count = self.data_count+1
         try:
             if len(status) > 0:
-                reg_value1 = QTableWidgetItem(str(status['Reg1']))
-                reg_value1.setTextAlignment(Qt.AlignCenter+Qt.AlignVCenter)
-                self.device_table.setItem(0, 0, reg_value1)
+                #unload new values from json
+                self.new_values[0] = int(status['Reg1'])
+                self.new_values[1] = int(status['Reg2'])
+                self.new_values[2] = int(status['Reg3'])
+                self.new_values[3] = int(status['Reg4'])
+                self.new_values[4] = int(status['Reg5'])
+                self.new_values[5] = int(status['Reg6'])
+                # Calculate averages
+                for i in range(6):
+                    self.averages[i] = self.averages[i] - (self.averages[i] / 60) + (self.new_values[i] / 60)
 
-                reg_value2 = QTableWidgetItem(str(status['Reg2']))
-                reg_value2.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
-                self.device_table.setItem(0, 1, reg_value2)
+                for i in range(6):
+                    item = QTableWidgetItem(str(self.new_values[i]))
+                    item.setTextAlignment(Qt.AlignCenter+Qt.AlignVCenter)
+                    self.device_table.setItem(0, i, item)
 
-                reg_value3 = QTableWidgetItem(str(status['Reg3']))
-                reg_value3.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
-                self.device_table.setItem(0, 2, reg_value3)
+                for i in range(6):
+                    item = QTableWidgetItem("{:0.2f}".format(self.averages[i]))
+                    item.setTextAlignment(Qt.AlignCenter+Qt.AlignVCenter)
+                    self.device_table.setItem(1, i, item)
 
-                reg_value4 = QTableWidgetItem(str(status['Reg4']))
-                reg_value4.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
-                self.device_table.setItem(0, 3, reg_value4)
-
-                reg_value5 = QTableWidgetItem(str(status['Reg5']))
-                reg_value5.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
-                self.device_table.setItem(0, 4, reg_value5)
-
-                reg_value6 = QTableWidgetItem(str(status['Reg6']))
-                reg_value6.setTextAlignment(Qt.AlignCenter + Qt.AlignVCenter)
-                self.device_table.setItem(0, 5, reg_value6)
-
-                new_value1 = int(status['Reg1'])
-                new_value2 = int(status['Reg2'])
-                new_value3 = int(status['Reg3'])
-                new_value4 = int(status['Reg4'])
-                new_value5 = int(status['Reg5'])
-                new_value6 = int(status['Reg6'])
-                self.particle_graph.update_plots(new_value1, new_value2, new_value3, new_value4, new_value5, new_value6)
+                self.particle_graph.update_plots(self.new_values+self.averages)
+                # Post the averages to the cloud since we have 60 seconds worth of data.
+                if not (self.data_count % 60):
+                    payload = {"field1": str(datetime.now()),
+                               "field2": str(self.averages[0]),
+                               "field3": str(self.averages[1]),
+                               "field4": str(self.averages[2]),
+                               "field5": str(self.averages[3]),
+                               "field6": str(self.averages[4]),
+                               "field7": str(self.averages[5])
+                               }
+                    url = 'https://api.thingspeak.com/update?api_key=BXQ29DOLHM9W26DK'
+                    get_response = requests.post(url, payload)
+                    print(get_response)
 
         except Exception as e:
             print(repr(e))
@@ -280,19 +294,20 @@ class AppForm(QMainWindow):
         self.device_table.verticalHeader().setVisible(False)     # hides row numbers
         self.device_table.setMinimumWidth(602)
         self.device_table.setMaximumWidth(602)
-        self.device_table.setMinimumHeight(45)
-        self.device_table.setMaximumHeight(45)
+        self.device_table.setMinimumHeight(90)
+        self.device_table.setMaximumHeight(90)
         self.device_table.setHorizontalHeaderLabels(
             ['0.3-0.5μm', '0.5-1.0μm', '1.0-2.5μm', '2.5-5.0μm', '5.0-7.5μm', '7.5-10.0μm'])
-        self.device_table.setColumnWidth(0, 100)    # 0.3-0.5μm
-        self.device_table.setColumnWidth(1, 100)    # 0.5-1.0μm
-        self.device_table.setColumnWidth(2, 100)    # 1.0-2.5μm
-        self.device_table.setColumnWidth(3, 100)    # 2.5-5.0μm
-        self.device_table.setColumnWidth(4, 100)    # 5.0-7.5μm
-        self.device_table.setColumnWidth(5, 100)    # 7.5-10.0μm
+
+        # Set all the columns to width 100
+        for i in range(5):
+            self.device_table.setColumnWidth(i, 100)
 
         control_layout = QVBoxLayout()
         control_layout.addWidget(self.device_table)
+
+        self.device_table.insertRow(0)
+        self.device_table.setRowHeight(0, 20)
         self.device_table.insertRow(0)
         self.device_table.setRowHeight(0, 20)
 
@@ -302,11 +317,27 @@ class AppForm(QMainWindow):
         self.data_plot_layout = QSplitter()
         self.data_plot_layout.setOrientation(Qt.Vertical)
 
-        self.particle_graph = SixGraphWidget()
+        self.particle_graph = MultiGraphWidget(12)
         self.particle_graph.update_title("Particles")
         self.particle_graph.update_labels("Particles / s")
-        self.particle_graph.update_pens('r', 'g', 'y', 'b', 'cyan', 'w')
-        self.particle_graph.update_names('0.3-0.5μm', '0.5-1.0μm', '1.0-2.5μm', '2.5-5.0μm', '5.0-7.5μm', '7.5-10.0μm')
+
+        pens = ['k', 'k', 'k', 'k', 'k', 'k','r', 'g', 'y', 'b', 'cyan', 'w']
+        self.particle_graph.update_pens(pens)
+
+        pens = ['r', 'g', 'y', 'b', 'cyan', 'w', 'r', 'g', 'y', 'b', 'cyan', 'w']
+        self.particle_graph.update_symbol_pens(pens)
+
+        plot_names = ['0.3-0.5μm', '0.5-1.0μm', '1.0-2.5μm', '2.5-5.0μm', '5.0-7.5μm', '7.5-10.0μm','0.3-0.5μm Avg', '0.5-1.0μm Avg', '1.0-2.5μm Avg', '2.5-5.0μm Avg', '5.0-7.5μm Avg', '7.5-10.0μm Avg']
+        self.particle_graph.update_names(plot_names)
+
+        widths = [0,0,0,0,0,0,1,1,1,1,1,1]
+        self.particle_graph.update_widths(widths)
+
+        symbols = ['o', 'o', 'o', 'o', 'o','o', None, None, None, None, None, None,]
+        self.particle_graph.update_symbols(symbols)
+
+        self.particle_graph.update_plot_styles()
+
         self.data_plot_layout.addWidget(self.particle_graph)
 
         control_layout.addWidget(self.data_plot_layout)
@@ -354,4 +385,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
