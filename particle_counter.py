@@ -177,7 +177,7 @@ class SerialDataThread(QRunnable):
 
                             reg1 = int(payload[12]) | int(payload[13]) << 8
                             reg2 = int(payload[14]) | int(payload[15]) << 8
-                            reg3 = int(payload[15]) | int(payload[17]) << 8
+                            reg3 = int(payload[16]) | int(payload[17]) << 8
 
                             reg4 = payload[20] | payload[21] << 8
                             reg5 = payload[22] | payload[23] << 8
